@@ -1,0 +1,1100 @@
+---
+title: "Assignment3"
+output: html_document
+date: "2025-03-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+
+```
+
+# Data Cleaning and Preparation
+
+```{r}
+#Read in the dataframe
+df <- read.csv("CKD_Training.csv", stringsAsFactors = TRUE, row.names = "ID")
+test <- read.csv("CKD_Test.csv", stringsAsFactors = TRUE, row.names = "ID")
+```
+
+```{r}
+
+# Variable Definitions
+# ID: Identification number
+# Age: Age (years)
+# Female: 1 if female
+# Racegrp: Self-reported race/ethnic group (white, black, Hispanic, other)
+# Educ: 1 if more than high school
+# Unmarried: 1 if unmarried
+# Income: 1 if household income is above the median
+# CareSource: Self-reported source of medical care (Dr./HMO, clinic, noplace, other)
+# Insured: 1 if covered by health insurance
+# Weight: Weight (kg)
+# Height: Height (cm)
+# BMI: Body mass index (kg/m^2)
+# Obese: 1 if BMI is greater than 30 kg/m^2
+# Waist: Waist circumference (cm)
+# SBP: Systolic blood pressure (max)
+# DBP: Diastolic blood pressure (min)
+# HDL: High-density lipoprotein (mg/dL) the "good" cholesterol
+# LDL: Low-density lipoprotein (mg/dL) the "bad" cholesterol
+# Total Chol: Total cholesterol (mg/dL) sum of HDL and LDL
+# Dyslipidemia: Too high LDL or too low HDL
+# PVD: Peripheral vascular disease (reduced SBP at the leg relative to the arm)
+# Activity: 1 - Mostly sit; 2 - Stand/walk a lot; 3 - Lift light loads/climb stairs often; 4 - Heavy work and heavy loads
+# Poor Vision: Self-reported poor vision
+# Smoker: Smoked at least 100 cigarettes
+# Hypertension: The presence of at least one of four indicators of high blood pressure
+# Fam Hypertension: Family history of hypertension
+# Diabetes: Self-reported physician diagnosis or lab test result
+# Fam Diabetes: Family history of diabetes
+# Stroke: Self-reported response to "Has a doctor ever told you that you had a stroke?"
+# CVD: Response to "Has a doctor ever told you that you had angina pectoris, myocardial infarction, or stroke?"
+# Fam CVD: Family history of cardiovascular disease
+# CHF: Self-reported response to "Has a doctor ever told you that you had congestive heart failure?"
+# Anemia: Treatment for anemia received in the past three months or hemoglobin at exam lower than 11g/dL
+# CKD = Target
+```
+
+```{r}
+rows_with_nulls <- df[rowSums(is.na(df)) > 0, ]
+rows_with_nulls$null_count <- rowSums(is.na(rows_with_nulls))
+
+# Identify rows where the count of missing values is 3 or more
+rows_to_drop <- rownames(rows_with_nulls)[rows_with_nulls$null_count >= 5]
+
+df_cleaned <- df[-as.numeric(rows_to_drop), ]
+
+
+```
+
+```{r}
+#Replace some NaNs with "Unknown" because they are meaningful
+df_cleaned$Obese[is.na(df_cleaned$Obese)] <- 'Unknown'
+df_cleaned$Fam.CVD[is.na(df_cleaned$Fam.CVD)] <- 'Unknown'
+df_cleaned$Activity[is.na(df_cleaned$Activity)] <- 'Unknown'
+
+#Now turn those columns into factors
+df_cleaned$Obese <- as.factor(df_cleaned$Obese)
+df_cleaned$Fam.CVD <- as.factor(df_cleaned$Fam.CVD)
+df_cleaned$Activity <- as.factor(df_cleaned$Activity)
+```
+
+```{r}
+#Replace some NaNs with "Unknown" because they are meaningful
+test_cleaned <- test
+test_cleaned$Obese[is.na(test_cleaned$Obese)] <- 'Unknown'
+test_cleaned$Fam.CVD[is.na(test_cleaned$Fam.CVD)] <- 'Unknown'
+test_cleaned$Activity[is.na(test_cleaned$Activity)] <- 'Unknown'
+
+#Now turn those columns into factors
+test_cleaned$Obese <- as.factor(test_cleaned$Obese)
+test_cleaned$Fam.CVD <- as.factor(test_cleaned$Fam.CVD)
+test_cleaned$Activity <- as.factor(test_cleaned$Activity)
+```
+
+```{r}
+#Now replace binary/categorical colums with the mode value
+
+columns_to_fill <- c("Educ", "Unmarried", "Income", "Insured", "PoorVision", "Anemia", "CHF", "CVD", "Hypertension", "Stroke","Diabetes")
+df[columns_to_fill] <- lapply(df[columns_to_fill], as.factor)
+test_cleaned[columns_to_fill] <- lapply(test_cleaned[columns_to_fill], as.factor)
+
+# Calculate mode for each column if it exists in df_cleaned #Credit: ChatGPT
+mode_values <- sapply(columns_to_fill, function(col) {
+  if (col %in% names(df_cleaned)) {
+    mode_val <- names(sort(table(df_cleaned[[col]]), decreasing = TRUE))[1]
+    return(mode_val)
+  } else {
+    return(NA)
+  }
+}, simplify = FALSE)
+
+# Replace NaN values with the mode
+for (col in names(mode_values)) {
+  if (!is.na(mode_values[[col]])) {
+    df_cleaned[[col]][is.na(df_cleaned[[col]])] <- mode_values[[col]]
+        test_cleaned[[col]][is.na(test_cleaned[[col]])] <- mode_values[[col]]
+
+  }
+}
+```
+
+```{r}
+# Replace NaNs in numeric with the mean value
+columns_to_fill <- c("BMI", "SBP", "DBP","Weight","Height","Waist","HDL","LDL","Total.Chol")
+
+# Calculate mean for each column if it exists in df_cleaned
+mean_values <- sapply(columns_to_fill, function(col) {
+  if (col %in% names(df_cleaned)) {
+    return(mean(df_cleaned[[col]], na.rm = TRUE))
+  } else {
+    return(NA)
+  }
+}, simplify = FALSE)
+
+# Replace NaN values with the mean
+for (col in names(mean_values)) {
+  if (!is.na(mean_values[[col]])) {
+    df_cleaned[[col]][is.na(df_cleaned[[col]])] <- mean_values[[col]]
+    test_cleaned[[col]][is.na(test_cleaned[[col]])] <- mean_values[[col]]
+
+  }
+}
+```
+
+```{r}
+#Check the dimensions and save the file
+dim(df_cleaned)
+write.csv(df_cleaned, "CKD_FullTrain.csv", row.names = TRUE)  # Set row.names = TRUE to keep row numbers
+dim(test_cleaned)
+write.csv(test_cleaned, "CKD_TestCleaned.csv", row.names = TRUE)  # Set row.names = TRUE to keep row numbers
+```
+
+```{r}
+#create another version with dummy columns and save
+install.packages("fastDummies")
+library(fastDummies)
+
+df_dummies <- dummy_cols(df_cleaned, select_columns = c("Racegrp", "CareSource", "Activity","Obese","Fam.CVD"),remove_first_dummy = TRUE, remove_selected_columns = TRUE) 
+write.csv(df_dummies, "CKD_train_dummies_2.csv", row.names = TRUE)  # Set row.names = TRUE to keep row numbers
+
+test_dummies <- dummy_cols(test_cleaned, select_columns = c("Racegrp", "CareSource", "Activity","Obese","Fam.CVD"),remove_first_dummy = TRUE, remove_selected_columns = TRUE) 
+write.csv(test_dummies, "CKD_test_dummies.csv", row.names = TRUE)  # Set row.names = TRUE to keep row numbers
+```
+
+```{r}
+#Remove weight, height, and waist
+df_cleaned <- df_cleaned[, !(colnames(df) %in% c('Weight', 'Height', 'Waist'))]
+```
+
+```{r}
+#turn LDL and HDL into ratios
+df_cleaned$LDL <- df_cleaned$LDL/df_cleaned$Total.Chol
+df_cleaned$HDL <- df_cleaned$HDL/df_cleaned$Total.Chol
+```
+
+# Train and Validation Sets
+
+```{r}
+set.seed(4)  # to reproduce results
+
+#80/20 split
+total_rows <- nrow(df_cleaned)
+train_size <- round(total_rows * 0.8)
+
+train_set <- sample(total_rows, train_size)
+val_set <- setdiff(1:total_rows, train_set)
+
+train_data <- df_cleaned[train_set, ]  # Subset using train indices
+val_data <- df_cleaned[val_set, ]    # Subset using val indices
+
+#get the distribution of the target to verify that there is the same proportion in training and validation
+prop.table(table(train_data$CKD)) * 100
+prop.table(table(val_data$CKD)) * 100
+
+#dim(train_data)
+#dim(val_data)
+```
+
+# Decision Tree Classifier
+
+```{r}
+#install.packages('rpart')
+library(rpart)
+```
+
+```{r}
+#This is a custom loss matrix
+#it sets a high cost for false negatives and a smaller cost for false positives
+loss_matrix <- matrix(c(0, 100,   # Row 1: Cost of TN (0) and FP (100)
+                        1200, 0), # Row 2: Cost of FN (1200) and TP (0)
+                      nrow = 2, byrow = TRUE)
+```
+
+```{r}
+#function to calculate average profit per subject from the confusion matrix
+avg_profit <- function(confusion.matrix) {
+    TP <- confusion.matrix[2,2]
+    FP <- confusion.matrix[2,1]
+    TN <- confusion.matrix[1,1]
+    FN <- confusion.matrix[1,2]
+    return((1200*TP - 100*FP)/(TP+FP+TN+FN))
+}
+```
+
+```{r}
+#Model 1: Default parameters
+fit <- rpart(CKD ~ ., # formula, all predictors will be considered in splitting
+             data=train_data, # dataframe used
+             method="class",  
+             control=rpart.control(), # xval: num of cross validation for gini estimation 
+             parms=list(split="gini"))  # criterial for splitting: gini default, entropy if set parms=list(split="information")
+
+train_pred <- predict(fit, train_data, type="class")
+train_actual <- train_data$CKD
+
+confusion.matrix <- table(train_pred, train_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+val_pred <- predict(fit, val_data, type="class")
+val_actual <- val_data$CKD
+
+confusion.matrix <- table(val_pred, val_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+#Model 2: Custom loss function
+fit2 <- rpart(CKD ~ ., # formula, all predictors will be considered in splitting
+             data=train_data, # dataframe used
+             method="class",  
+             control=rpart.control(), # xval: num of cross validation for gini estimation 
+             parms=list(split="gini",loss=loss_matrix))  # criterial for splitting: gini default, entropy if set parms=list(split="information")
+
+train_pred <- predict(fit2, train_data, type="class")
+train_actual <- train_data$CKD
+confusion.matrix <- table(train_pred, train_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+val_pred <- predict(fit2, val_data, type="class")
+val_actual <- val_data$CKD
+confusion.matrix <- table(val_pred, val_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+#Model 3
+fit3 <- rpart(CKD ~ ., # formula, all predictors will be considered in splitting
+             data=train_data, # dataframe used
+             method="class",  
+             control=rpart.control(xval=0, minsplit=1200), # xval: num of cross validation for gini estimation 
+             parms=list(split="gini",loss=loss_matrix))  # criterial for splitting: gini default, entropy if set parms=list(split="information")
+
+train_pred <- predict(fit3, train_data, type="class")
+train_actual <- train_data$CKD
+confusion.matrix <- table(train_pred, train_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+val_pred <- predict(fit3, val_data, type="class")
+val_actual <- val_data$CKD
+confusion.matrix <- table(val_pred, val_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+fit4 <- rpart(CKD ~ ., # formula, all predictors will be considered in splitting
+             data=train_data, # dataframe used
+             method="class",  
+             control=rpart.control(xval=0, cp=0), # xval: num of cross validation for gini estimation 
+             parms=list(split="gini",loss=loss_matrix))  # criterial for splitting: gini default, entropy if set parms=list(split="information")
+
+train_pred <- predict(fit4, train_data, type="class")
+train_actual <- train_data$CKD
+confusion.matrix <- table(train_pred, train_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+val_pred <- predict(fit4, val_data, type="class")
+val_actual <- val_data$CKD
+
+confusion.matrix <- table(val_pred, val_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+#Downsampling code
+# 1. Separate the data by class
+data_minority <- subset(train_data, CKD == 1)
+data_majority <- subset(train_data, CKD == 0)
+ 
+n_minority <- nrow(data_minority)
+ 
+# 2. Calculate how many majority samples we want, change the ratio in the bracket (70% "0" to 30% "1" in this case)
+n_majority_desired <- round((7/3) * n_minority)
+ 
+# 3. Randomly sample from the majority class
+set.seed(42)
+data_majority_down <- data_majority[sample(nrow(data_majority), 
+                                           n_majority_desired), ]
+ 
+# 4. Combine
+train_downsampled <- rbind(data_minority, data_majority_down)
+```
+
+```{r}
+fit5 <- rpart(CKD ~ ., # formula, all predictors will be considered in splitting
+             data=train_data, # dataframe used
+             method="class",  
+             control=rpart.control(xval=0, minsplit=20, cp=0.05), # xval: num of cross validation for gini estimation 
+             parms=list(split="gini",loss=loss_matrix))  # criterial for splitting: gini default, entropy if set parms=list(split="information")
+
+train_pred <- predict(fit4, train_data, type="class")
+train_actual <- train_data$CKD
+confusion.matrix <- table(train_pred, train_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+val_pred <- predict(fit5, val_data, type="class")
+val_actual <- val_data$CKD
+
+confusion.matrix <- table(val_pred, val_actual)  
+pt <- prop.table(confusion.matrix)  
+print("Accuracy")
+pt[1,1] + pt[2,2] 
+print("Average profit")
+avg_profit(confusion.matrix)
+```
+
+```{r}
+install.packages('rpart.plot')
+library(rpart.plot)
+par(mar = c(5, 5, 4, 4))
+
+rpart.plot(fit, type = 3, extra = 4, 
+           main = "Classification Tree for CKD Screening - Default",
+           cex = 1.2, fallen.leaves = TRUE, faclen = 0)  # Adjust cex to increase font size (default = 1)
+```
+
+```{r}
+rpart.plot(fit2, type = 3, extra = 4, main="Classification Tree for CKD Screening - Custom Loss", cex = 1.5, fallen.leaves = TRUE, faclen = 0)  # show proportion of classes at each node
+
+```
+
+```{r}
+pred <- predict(fit2, df_cleaned, type="class")
+actual <- df_cleaned$CKD
+
+confusion.matrix <- table(pred, actual)  
+confusion.matrix
+pt <- prop.table(confusion.matrix)  
+pt[1,1] + pt[2,2]   
+avg_profit(confusion.matrix)
+```
+
+## Reading Data: Chronic Kidney Disease
+
+We are working on health data, and want to build a model predicting the likelihood of CKD in a patient given some predictors.
+
+*Adding Modules*
+
+```{r modules, echo = FALSE}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(rpart)
+```
+
+*Reading Data:*
+
+```{r}
+data <- read.csv('CKD_train_dummies_2.csv')
+  
+  #read.csv("CKD_train_dummies_2 1(in).csv") on Hans' R Instance.
+dim(data)
+```
+
+*Do we have missing data?*
+
+```{r}
+missing_data <- sapply(data, function(x) sum(is.na(x)))
+
+sum(is.na(data))
+#sum(is.infinite(as.matrix(data)))
+
+for (col in names(data)) {
+  missing_count <- sum(is.na(data[[col]]))
+  cat("Column:", col, "Missing values:", missing_count, "\n")
+}
+
+```
+
+## convert HDL, LDL to ratios
+
+```{r}
+data_mu <- data %>%
+  mutate(good_chol_ratio = HDL / Total.Chol) %>%  # create the new column
+  select(-HDL, -LDL) 
+data_mu
+```
+
+## Which variables are correlated?
+
+```{r}
+# Calculate the correlation matrix excluding the 'CKD' column
+cor_matrix <- cor(data_mu[, -which(names(data_mu) == "CKD")])
+
+# Find correlations greater than 0.35 in absolute value (exclude the diagonal)
+high_correlations <- which(abs(cor_matrix) > 0.3, arr.ind = TRUE)
+
+# Remove the diagonal correlations (which are always 1)
+high_correlations <- high_correlations[high_correlations[,1] < high_correlations[,2], ]
+
+# Extract the variable names corresponding to the high correlations
+high_correlation_pairs <- data.frame(
+  Var1 = rownames(cor_matrix)[high_correlations[,1]],
+  Var2 = colnames(cor_matrix)[high_correlations[,2]],
+  Correlation = cor_matrix[high_correlations]
+)
+
+# Sort by the highest correlation (in descending order)
+high_correlation_pairs_sorted <- high_correlation_pairs[order(-high_correlation_pairs$Correlation), ]
+
+# Print the sorted high correlation pairs
+print(high_correlation_pairs_sorted)
+
+
+```
+
+## Train/Valid split the dataset
+
+```{r}
+# Dropping variables that we find correlated
+# weight, height and waist are all dropped as well
+new_df <- data_mu[, !(names(data_mu) %in% c("ID","Weight", "Height", "Waist", "Income", "SBP" ))]
+
+# Ensure that CKD is a factor (if it's not already)
+new_df$CKD <- as.factor(new_df$CKD)
+```
+
+```{r}
+set.seed(4)  # Set seed for reproducibility
+total_rows <- nrow(new_df)
+train_size <- round(total_rows * 0.8)
+ 
+train_set <- sample(total_rows, train_size)
+val_set <- setdiff(1:total_rows, train_set)
+ 
+train_data <- new_df[train_set, ]  # Subset using train indices
+val_data <- new_df[val_set, ]    # Subset using val indices
+```
+
+```{r}
+sum(val_data$CKD_down == 1)/sum(val_data$CKD_down == 0)
+```
+
+## Base Logistic Model
+
+```{r Model Building - Base Logistic}
+
+# Fit the logistic regression model
+logit_model <- glm(CKD ~ ., data = train_data, family = binomial)
+
+# Print the model summary
+summary(logit_model)
+```
+
+```{r}
+# 1. Make predictions using the fitted logistic regression model
+predictions_base <- predict(logit_model, newdata = val_data, type = "response")
+
+# 2. Convert the predicted probabilities into binary class labels
+# (usually, we choose a threshold of 0.5)
+predicted_class <- ifelse(predictions_base > 0.5, 1, 0)
+
+# 3. Compare predicted class labels with the actual values in the CKD column
+# Here, we assume that the actual values (true labels) are in new_df$CKD
+actual_class <- val_data$CKD
+
+# 4. Calculate accuracy
+accuracy <- mean(predicted_class == actual_class)
+cat("\nModel Accuracy:", accuracy, '\n')
+
+# 5. Generate confusion matrix
+conf_matrix <- table(Predicted = predicted_class, Actual = actual_class)
+
+
+print(conf_matrix)
+cat("\nModel Accuracy:", accuracy, '\n')
+
+
+# Extract values from confusion matrix
+TP <- conf_matrix[2, 2]  # True Positives
+TN <- conf_matrix[1, 1]  # True Negatives
+FP <- conf_matrix[2, 1]  # False Positives
+FN <- conf_matrix[1, 2]  # False Negatives
+
+# Calculate Sensitivity and Specificity
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+
+# Print the results
+cat("\nTrue Positives (TP):\t", TP, "\n")
+cat("True Negatives (TN):\t", TN, "\n")
+cat("False Positives (FP):\t", FP, "\n")
+cat("False Negatives (FN):\t", FN, "\n")
+cat("Sensitivity:\t\t", sensitivity, "\n")
+cat("Specificity:\t\t", specificity, "\n")
+
+# Specificity: Proportion of true negatives out of all the people who do not have the disease.
+# Sensitivity tells us how well the test can find people who actually have the disease
+
+```
+
+## What if we used a subset of the data?
+
+```{r}
+library(leaps)
+
+# Fit a logistic regression model using regsubsets
+subset_model <- regsubsets(CKD ~ ., data = train_data, method = "exhaustive")
+
+# Summary of the subset selection results
+subset_summary <- summary(subset_model)
+subset_summary
+```
+
+```{r}
+# Identify the best subset size by finding the minimum Cp value
+best_cp_index <- which.min(subset_summary$cp)
+cat("Best subset size:", best_cp_index, "\n")
+
+cat("Mallows' Cp for best subset:", subset_summary$cp[best_cp_index], "\n")
+
+best_predictors <- names(coef(subset_model, best_cp_index))[-1]  # Remove the intercept
+print(best_predictors)
+```
+
+## (Kevin) Whether to use Mallow's Cp is questioned as the accuracy measure may not be aligned with our goal
+
+```{r}
+# Plot Mallows' Cp
+plot(subset_summary$cp, 
+     type = "b", 
+     xlab = "Number of Predictors", 
+     ylab = "Mallows' Cp", 
+     main = "Mallows' Cp for Subset Selection")
+
+```
+
+```{r}
+# Get the names of the best subset predictors
+best_predictors <- names(coef(subset_model, best_cp_index))[-1]  # Remove the intercept
+print(best_predictors)
+# Create a new formula with the best subset of predictors
+best_formula <- as.formula(paste("CKD ~", paste(best_predictors, collapse = " + ")))
+
+# Fit the logistic regression model with the best subset
+best_logit_model <- glm(best_formula, data = train_data, family = binomial)
+
+# Print the summary of the logistic regression model
+summary(best_logit_model)
+```
+
+```{r}
+# Step 1: Fit the logistic regression model
+best_logit_model <- glm(best_formula, data = train_data, family = binomial)
+
+# Step 2: Predict the probabilities for the training dataset
+prediction_subset <- predict(best_logit_model, newdata = val_data, type = "response")
+
+# Step 3: Convert probabilities to binary outcomes (0 or 1)
+predicted_classes <- ifelse(prediction_subset > 0.5, 1, 0)
+
+# Step 4: Create the confusion matrix
+# Assuming the actual outcomes are stored in the response variable of your dataframe (e.g., "target")
+conf_matrix1 <- table(Predicted = predicted_classes, Actual = val_data$CKD)
+
+# Print the confusion matrix
+print(conf_matrix1)
+
+# 4. Calculate accuracy
+accuracy <- mean(predicted_classes == val_data$CKD)
+cat("\nModel Accuracy:\t\t", accuracy, '\n')
+
+# Extract values from confusion matrix
+TP <- conf_matrix1[2, 2]  # True Positives
+TN <- conf_matrix1[1, 1]  # True Negatives
+FP <- conf_matrix1[2, 1]  # False Positives
+FN <- conf_matrix1[1, 2]  # False Negatives
+
+# Calculate Sensitivity and Specificity
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+
+# Print the results
+cat("\nTrue Positives (TP):\t", TP, "\n")
+cat("True Negatives (TN):\t", TN, "\n")
+cat("False Positives (FP):\t", FP, "\n")
+cat("False Negatives (FN):\t", FN, "\n")
+cat("Sensitivity:\t\t", sensitivity, "\n")
+cat("Specificity:\t\t", specificity, "\n")
+
+# Specificity: Proportion of true negatives out of all the people who do not have the disease.
+# Sensitivity tells us how well the test can find people who actually have the disease
+```
+
+## Which Cutoffs are best suited to our application?
+
+We receive \$1300 for every True Positive (Actual positive, as predicted). We also incur a cost of \$100 for every predicted positive.
+
+If we were to use the `base model`:
+
+```{r}
+combined_df <- data.frame(predictions_base, prediction_subset, CKD = val_data$CKD)
+combined_df
+```
+
+```{r}
+# Define the cutoffs
+cutoffs <- seq(0, 1, by = 0.01)
+
+# Initialize an empty list to store the results
+results <- list()
+
+# Loop through each cutoff and compute TP and predicted positives
+for (cutoff in cutoffs) {
+  # Classify predictions as 0 or 1 based on the cutoff for both models
+  predictions_base_ac <- ifelse(predictions_base >= cutoff, 1, 0)
+  predictions_subset <- ifelse(prediction_subset >= cutoff, 1, 0)
+  
+  # Calculate True Positives (TP): Actual value is 1 and the prediction is also 1
+  TP_model1 <- sum(val_data$CKD == 1 & predictions_base_ac == 1)
+  TP_model2 <- sum(val_data$CKD == 1 & predictions_subset == 1)
+  TN_model1 <- sum(val_data$CKD == 0 & predictions_base_ac == 0)
+  TN_model2 <- sum(val_data$CKD == 0 & predictions_subset == 0)
+  
+  # Sum of predicted positives: The sum of predictions that are 1
+  All_Pred_Pos_Base <- sum(predictions_base_ac == 1)
+  All_Pred_Pos_Subset <- sum(predictions_subset == 1)
+  
+  # Store the results for this cutoff
+  results[[as.character(cutoff)]] <- data.frame(
+    cutoff = cutoff,
+    TP_Base = TP_model1,
+    All_Pred_PositiveBase = All_Pred_Pos_Base,
+    TP_Subset = TP_model2,
+    All_Pred_PositiveSubset = All_Pred_Pos_Subset,
+    TN_Base = TN_model1,
+    TN_Subset = TN_model2
+    
+  )
+}
+
+# Combine the results into a single dataframe
+final_results <- do.call(rbind, results)
+head(final_results)
+```
+
+```{r}
+final_results$Net_Profit_Base <- 1300 * final_results$TP_Base - 100 * final_results$All_Pred_PositiveBase
+
+final_results$Net_Profit_Subset <- 1300 * final_results$TP_Subset - 100 * final_results$All_Pred_PositiveSubset
+
+final_results$Val_Accuracy_Base <- (final_results$TP_Base + final_results$TN_Base) / length(val_data$CKD)
+
+final_results$Val_Accuracy_Subset <- (final_results$TP_Subset + final_results$TN_Subset) / length(val_data$CKD)
+
+final_results$Net_Profit_BasePP <- final_results$Net_Profit_Base / length(val_data$CKD)
+
+final_results$Net_Profit_SubsetPP <- final_results$Net_Profit_Subset / length(val_data$CKD)
+
+ggplot(final_results, aes(x = cutoff)) +
+  geom_line(aes(y = Net_Profit_BasePP, color = "Net Profit Base")) +
+  geom_line(aes(y = Net_Profit_SubsetPP, color = "Net Profit Subset")) +
+  labs(x = "Cutoff", y = "Net Profit", color = "Legend") +
+  theme_minimal() +
+  scale_color_manual(values = c("Net Profit Base" = "blue", "Net Profit Subset" = "red"))
+```
+
+## Results of the validation
+
+```{r}
+final_results[, c('cutoff', 'Val_Accuracy_Base', 'Val_Accuracy_Subset', 'Net_Profit_BasePP', 'Net_Profit_SubsetPP')]
+```
+
+## Does handling class imbalance improve the model?
+
+```{r}
+install.packages("caret")
+library(caret)
+```
+
+## Train/Valid Split the Down Sampled Data Set
+
+```{r}
+set.seed(4)  # Set seed for reproducibility
+total_rows <- nrow(new_df)
+train_size <- round(total_rows * 0.8)
+ 
+train_set <- sample(total_rows, train_size)
+val_set <- setdiff(1:total_rows, train_set)
+ 
+train_d1 <- new_df[train_set, ]  # Subset using train indices
+val_data <- new_df[val_set, ]    # Subset using val indices
+
+dim(train_d1)
+dim(val_data)
+```
+
+```{r}
+# Handle CKD in training dataset
+predictors <- train_d1[, setdiff(names(train_d1), "CKD")]
+train_d1$CKD <- as.factor(train_d1$CKD)
+outcome    <- train_d1$CKD
+ 
+# Perform downsampling
+set.seed(42)
+train_data <- downSample(x = predictors, y = outcome, yname = "CKD_down")
+train_data
+```
+
+## Base Logistic Model - Down Sampled Train Data
+
+```{r Model Building - Base Logistic}
+
+# Fit the logistic regression model using downsampled train data
+logit_model <- glm(CKD_down ~ ., data = train_data, family = binomial)
+
+# Print the model summary
+summary(logit_model)
+```
+
+## Predict on Validation Dataset
+
+```{r}
+# Make predictions using the fitted logistic regression model
+actual_class <- val_data$CKD
+
+predictions_base <- predict(logit_model, newdata = val_data, type = "response")
+
+# Convert the predicted probabilities into binary class labels using 0.5 cutoff
+predicted_class <- ifelse(predictions_base > 0.5, 1, 0)
+
+# 4. Calculate accuracy
+accuracy <- mean(predicted_class == actual_class)
+#cat("\nModel Accuracy:\t\t", accuracy, '\n')
+
+# 5. Generate confusion matrix
+conf_matrix <- table(Predicted = predicted_class, Actual = actual_class)
+
+
+print(conf_matrix)
+cat("\nModel Accuracy:\t\t", accuracy, '\n')
+
+
+# Extract values from confusion matrix
+TP <- conf_matrix[2, 2]  # True Positives
+TN <- conf_matrix[1, 1]  # True Negatives
+FP <- conf_matrix[2, 1]  # False Positives
+FN <- conf_matrix[1, 2]  # False Negatives
+
+# Calculate Sensitivity and Specificity
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+
+# Print the results
+cat("\nTrue Positives (TP):\t", TP, "\n")
+cat("True Negatives (TN):\t", TN, "\n")
+cat("False Positives (FP):\t", FP, "\n")
+cat("False Negatives (FN):\t", FN, "\n")
+cat("Sensitivity:\t\t", sensitivity, "\n")
+cat("Specificity:\t\t", specificity, "\n")
+
+# Specificity: Proportion of true negatives out of all the people who do not have the disease.
+# Sensitivity tells us how well the test can find people who actually have the disease
+
+```
+
+## Subset Logistic Model and Down Sampled Data
+
+```{r}
+library(leaps)
+
+# Fit a logistic regression model using regsubsets
+subset_model <- regsubsets(CKD_down ~ ., data = train_data, method = "exhaustive")
+
+# Summary of the subset selection results
+subset_summary <- summary(subset_model)
+subset_summary
+```
+
+```{r}
+# Identify the best subset size by finding the minimum Cp value
+best_cp_index <- which.min(subset_summary$cp)
+cat("Best subset size:", best_cp_index, "\n")
+
+cat("Mallows' Cp for best subset:", subset_summary$cp[best_cp_index], "\n")
+
+best_predictors <- names(coef(subset_model, best_cp_index))[-1]  # Remove the intercept
+print(best_predictors)
+```
+
+```{r}
+# Plot Mallows' Cp
+plot(subset_summary$cp, 
+     type = "b", 
+     xlab = "Number of Predictors", 
+     ylab = "Mallows' Cp", 
+     main = "Mallows' Cp for Subset Selection")
+
+```
+
+```{r}
+# Get the names of the best subset predictors
+best_predictors <- names(coef(subset_model, best_cp_index))[-1]  # Remove the intercept
+print(best_predictors)
+
+# Create a new formula with the best subset of predictors
+best_formula <- as.formula(paste("CKD_down ~", 
+                                 paste(best_predictors,collapse = " + ")))
+
+# Fit the logistic regression model with the best subset
+best_logit_model <- glm(best_formula, data = train_data, family = binomial)
+
+# Print the summary of the logistic regression model
+summary(best_logit_model)
+```
+
+## Predict on Validation Dataset
+
+```{r}
+# Step 1: Fit the logistic regression model
+best_logit_model <- glm(best_formula, data = train_data, family = binomial)
+
+# Step 2: Predict the probabilities for the training dataset
+prediction_subset <- predict(best_logit_model, newdata = val_data, type = "response")
+
+# Step 3: Convert probabilities to binary outcomes (0 or 1)
+predicted_classes <- ifelse(prediction_subset > 0.5, 1, 0)
+
+# Step 4: Create the confusion matrix
+# Assuming the actual outcomes are stored in the response variable of your dataframe (e.g., "target")
+conf_matrix1 <- table(Predicted = predicted_classes, Actual = val_data$CKD)
+
+# Print the confusion matrix
+print(conf_matrix1)
+
+
+# Extract values from confusion matrix
+TP <- conf_matrix[2, 2]  # True Positives
+TN <- conf_matrix[1, 1]  # True Negatives
+FP <- conf_matrix[2, 1]  # False Positives
+FN <- conf_matrix[1, 2]  # False Negatives
+
+# Calculate Sensitivity and Specificity
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+
+# 4. Calculate accuracy
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+
+# Print Accuracy
+cat("Accuracy:\t\t", accuracy, "\n")
+
+# Print the results
+cat("\nTrue Positives (TP):\t", TP, "\n")
+cat("True Negatives (TN):\t", TN, "\n")
+cat("False Positives (FP):\t", FP, "\n")
+cat("False Negatives (FN):\t", FN, "\n")
+cat("Sensitivity:\t\t", sensitivity, "\n")
+cat("Specificity:\t\t", specificity, "\n")
+
+# Specificity: Proportion of true negatives out of all the people who do not have the disease.
+# Sensitivity tells us how well the test can find people who actually have the disease
+```
+
+## Which Cutoffs are best suited to our application?
+
+We receive \$1300 for every True Positive (Actual positive, as predicted). We also incur a cost of \$100 for every predicted positive.
+
+If we were to use the `base model`:
+
+```{r}
+combined_df <- data.frame(predictions_base, prediction_subset, CKD = val_data$CKD)
+combined_df
+```
+
+```{r}
+# Define the cutoffs
+cutoffs <- seq(0, 1, by = 0.01)
+
+# Initialize an empty list to store the results
+results <- list()
+
+# Loop through each cutoff and compute TP and predicted positives
+for (cutoff in cutoffs) {
+  # Classify predictions as 0 or 1 based on the cutoff for both models
+  predictions_base_ac <- ifelse(predictions_base >= cutoff, 1, 0)
+  predictions_subset <- ifelse(prediction_subset >= cutoff, 1, 0)
+  
+  # Calculate True Positives (TP): Actual value is 1 and the prediction is also 1
+  TP_model1 <- sum(val_data$CKD == 1 & predictions_base_ac == 1)
+  TP_model2 <- sum(val_data$CKD == 1 & predictions_subset == 1)
+  TN_model1 <- sum(val_data$CKD == 0 & predictions_base_ac == 0)
+  TN_model2 <- sum(val_data$CKD == 0 & predictions_subset == 0)
+  
+  # Sum of predicted positives: The sum of predictions that are 1
+  All_Pred_Pos_Base <- sum(predictions_base_ac == 1)
+  All_Pred_Pos_Subset <- sum(predictions_subset == 1)
+  
+  # Store the results for this cutoff
+  results[[as.character(cutoff)]] <- data.frame(
+    cutoff = cutoff,
+    TP_Base = TP_model1,
+    All_Pred_PositiveBase = All_Pred_Pos_Base,
+    TP_Subset = TP_model2,
+    All_Pred_PositiveSubset = All_Pred_Pos_Subset,
+    TN_Base = TN_model1,
+    TN_Subset = TN_model2
+    
+  )
+}
+
+# Combine the results into a single dataframe
+final_results <- do.call(rbind, results)
+head(final_results)
+```
+
+```{r}
+final_results$Net_Profit_Base <- 1300 * final_results$TP_Base - 100 * final_results$All_Pred_PositiveBase
+
+final_results$Net_Profit_Subset <- 1300 * final_results$TP_Subset - 100 * final_results$All_Pred_PositiveSubset
+
+final_results$Val_Accuracy_Base <- (final_results$TP_Base + final_results$TN_Base) / length(val_data$CKD)
+
+final_results$Val_Accuracy_Subset <- (final_results$TP_Subset + final_results$TN_Subset) / length(val_data$CKD)
+
+final_results$Net_Profit_BasePP <- final_results$Net_Profit_Base / length(val_data$CKD)
+
+final_results$Net_Profit_SubsetPP <- final_results$Net_Profit_Subset / length(val_data$CKD)
+
+ggplot(final_results, aes(x = cutoff)) +
+  geom_line(aes(y = Net_Profit_BasePP, color = "Net Profit Base")) +
+  geom_line(aes(y = Net_Profit_SubsetPP, color = "Net Profit Subset")) +
+  labs(x = "Cutoff", y = "Net Profit", color = "Legend") +
+  theme_minimal() +
+  scale_color_manual(values = c("Net Profit Base" = "blue", "Net Profit Subset" = "red"))
+```
+
+## Results of the validation
+
+```{r}
+final_results[, c('cutoff', 'Val_Accuracy_Base', 'Val_Accuracy_Subset', 'Net_Profit_BasePP', 'Net_Profit_SubsetPP')]
+#head(final_results)
+```
+
+```{r}
+final_results[, c('cutoff', 'Net_Profit_BasePP')] %>% 
+  filter(Net_Profit_BasePP == max(Net_Profit_BasePP, na.rm = TRUE))
+```
+
+```{r}
+final_results[, c('cutoff','Net_Profit_SubsetPP')] %>% 
+  filter(Net_Profit_SubsetPP == max(Net_Profit_SubsetPP, na.rm = TRUE))
+
+```
+
+## Predicting the Test Sample
+
+```{r}
+test_csv = read.csv('CKD_test_dummies.csv')
+head(test_csv)
+```
+
+```{r}
+# Add the ratios
+test_csv_prep1 <- test_csv %>%
+  mutate(good_chol_ratio = HDL / Total.Chol) %>%  # create the new column
+  select(-HDL, -LDL) 
+
+
+# Remove the correlated variables
+test_csv_prep2 <- test_csv_prep1[, !(names(test_csv_prep1) %in% c("ID","Weight", "Height", "Waist", "Income", "SBP" ))]
+
+# Ensure that CKD is a factor (if it's not already)
+test_csv_prep2$CKD <- as.factor(test_csv_prep2$CKD)
+```
+
+```{r}
+# Apply the Best Logit_model on this: Base
+predictions_base <- predict(logit_model, newdata = test_csv_prep2, type = "response")
+
+# Convert the predicted probabilities into binary class labels using 0.56 cutoff
+predicted_class_test <- ifelse(predictions_base > 0.56, 1, 0)
+
+# How many 1's do we have?
+sum(predicted_class_test)/ length(predicted_class_test)
+
+
+Logit_Test_df <- data.frame(ID = test_csv_prep2$X +6000, Predicted = predicted_class_test)
+
+# Write the data frame to a CSV file
+write.csv(Logit_Test_df, file = "BaseLogit_DownsampleTrain_TestOutputs_withID.csv", row.names = FALSE)
+
+# Confirmation message
+cat("The vector has been written to 'BaseLogit_DownsampleTrain_TestOutputs.csv'")
+```
+
+```{r}
+
+```
+
+```{r}
+# Apply the Best Logit_model on this: Subset Model
+predictions_Logit <- predict(best_logit_model, newdata = test_csv_prep2, type = "response")
+
+# Convert the predicted probabilities into binary class labels using 0.44 cutoff
+predicted_class_test_subsetlogit <- ifelse(predictions_base > 0.44, 1, 0)
+
+# How many 1's do we have?
+sum(predicted_class_test_subsetlogit)/ length(predicted_class_test_subsetlogit)
+
+
+LogitSubset_Test_df <- data.frame(predicted_class_test_subsetlogit)
+
+# Write the data frame to a CSV file
+write.csv(LogitSubset_Test_df, file = "LogitSubset_Test_Output.csv", row.names = FALSE)
+
+# Confirmation message
+cat("The vector has been written to 'LogitSubset_Test_Output.csv'")
+
+```
