@@ -2,10 +2,15 @@
 
 ## API Module Description: 
 Phase 1: User Directory
+
 In this phase, I will crawl the user directory of all remaining humans to acquire an authentication token. The user directory is paginated, and I will need to find my token by navigating through the directory until I find a user whose username matches mine.
+
 Phase 2: Bounties
+
 In this phase, I will use the authentication token to access an API endpoint with various "bounties" that I can complete. The bounties are designed to practice scraping techniques and to practice using the requests library to invoke APIs.  The parameters of the task may also change at any time, I will need to write code to automate this scraping process rather than manually extracting it myself.
+
 Phase 3: Submission
+
 In this phase, I will POST data to a /submit endpoint to complete each bounty.
 
 ## Distributed Computing / MLOps Module Description:
