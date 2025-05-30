@@ -39,7 +39,7 @@ Expected Output: 1. A DataFrame with columns: language, quarter, post_count,perc
 
 Key Spark Concepts: UDFs, DataFrame operations, window functions, time-series analysis
 
-## Group_and_save_attachments
+## VBA Macro for Outlook: Group_and_save_attachments
 
 This is one of the automation macros I wrote for my coop. This one is the only one that doesn't involve confidentiality, so I can share this.
 Purpose:
@@ -49,11 +49,11 @@ For each email found:
 Creates a folder on D:\attachment download\ named after the email subject.
 Saves all attachments from that email into that folder.
 
-## Hotdog Recognition
+## Python Machine Learning CNN: Hotdog Recognition
 
 This project utilizes CNNs to solve a simple image recognition problem (identify if the food is a hot dog or not). I also built a GAN network for bird recognition, but unfortunately, that one exceeds the upload size limit. If interested, I can share a Google Colab link to that project: https://drive.google.com/file/d/1MrUAsjQMPXcZWs9ng3cm8M7TJ1WZUuNl/view?usp=drive_link
 
-## Screening for Chronic Kidney Disease
+## R statistical analysis: Screening for Chronic Kidney Disease
 
 I am building a predictive model to identify which adults in a test set of 2,819 people are most at risk for Chronic Kidney Disease (CKD) using a training set of 6,000 labeled cases.
 These are the key deliverables for this assignment:
