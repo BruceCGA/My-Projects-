@@ -55,7 +55,7 @@ This project utilizes CNNs to solve a simple image recognition problem (identify
 
 ## R statistical analysis: Screening for Chronic Kidney Disease
 
-I am building a predictive model to identify which adults in a test set of 2,819 people are most at risk for Chronic Kidney Disease (CKD) using a training set of 6,000 labeled cases.
+I built a predictive model to identify which adults in a test set of 2,819 people are most at risk for Chronic Kidney Disease (CKD) using a training set of 6,000 labeled cases.
 These are the key deliverables for this assignment:
 Split the data into:
     Training set (first 6,000 rows)
